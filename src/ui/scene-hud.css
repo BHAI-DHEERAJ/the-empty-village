@@ -44,7 +44,7 @@
 .journal-ending p { margin:3px 0 0; font-size:12px; }
 
 /* Leave the chase viewport clear; only the last run gets a timer. */
-.story-cover:is([data-phase='final-repair'],[data-phase='escape'])::before {
+.story-cover:is([data-phase='final-repair'],[data-phase='escape'],[data-phase='ending'])::before {
   content: ''; position: absolute; inset: 0; background: #070b0d; opacity: var(--story-fade,0); pointer-events: none;
 }
 .story-run {

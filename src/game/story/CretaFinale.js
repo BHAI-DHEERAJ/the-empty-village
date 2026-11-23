@@ -8,7 +8,7 @@ const cues = rows => Object.freeze(rows.map(Object.freeze));
 
 export const FIX = Object.freeze({ bonnet: .48, tools: 1.28, close: 3.78, ignition: 4.65, cut: 5.42, end: 5.95 });
 const FIX_CARDS = cards('अंतिम सफ़र · 05 / 05', [
-  [0, 'रिंच काम आया', 'कृष ने बोनट उठाया और ढीले जोड़ को रिंच से कस दिया।'],
+  [0, 'रिंच काम आया', 'कृष ने बोनट उठाया और रवि ने ढीले जोड़ को रिंच से कस दिया।'],
   [FIX.ignition, 'इंजन चल पड़ा', 'इस बार इंजन बंद नहीं हुआ। अब जंगल की राह पकड़नी है।'],
 ]);
 export const fixCopy = time => copyAt(FIX_CARDS, time);
@@ -28,17 +28,17 @@ export const ESCAPE = Object.freeze({
 const ESCAPE_CARDS = cards('अंतिम सफ़र · CRETA', [
   [0, 'गाँव जाग उठा', 'बत्तियाँ बुझीं। फिर हर गली से कदमों की आवाज़ आने लगी।'],
   [ESCAPE.ranks, 'वे दौड़ रहे हैं', 'नक़ाब, सफ़ेद चादरें और पेड़ों जैसे साये सड़क पर उमड़ पड़े।'],
-  [ESCAPE.cabin, 'कृष, गाड़ी बढ़ाओ', 'कृष ने एक्सेलरेटर दबाया। पीछे की सड़क पर साये ही साये थे।'],
+  [ESCAPE.cabin, 'दोनों साथ हैं', 'कृष ने एक्सेलरेटर दबाया, रवि ने सीट बेल्ट कस ली। पीछे की सड़क पर साये ही साये थे।'],
   [ESCAPE.skid, 'कच्ची सड़क पर फिसलन', 'मोड़ पर पहिए फिसले। पीछे दौड़ते साये और पास आ गए।'],
   [ESCAPE.impact, 'पेड़ से टक्कर', 'CRETA रुक गई। इंजन चुप था और भागते कदम अब बहुत पास थे।'],
-  [ESCAPE.restart, 'एक बार और', 'कृष: “Bruh… अभी नहीं!” पहली बार चाबी घुमाने पर इंजन नहीं चला।'],
-  [ESCAPE.catch, 'इंजन चल पड़ा!', 'कृष ने गाड़ी पेड़ से पीछे खींची।'],
+  [ESCAPE.restart, 'एक बार और', 'रवि: “Bruh… अभी नहीं!” कृष ने चाबी घुमाई, पर इंजन नहीं चला।'],
+  [ESCAPE.catch, 'इंजन चल पड़ा!', 'कृष ने गाड़ी पेड़ से पीछे खींची, रवि ने रास्ता देखा।'],
   [ESCAPE.breakaway, 'आख़िरी दौड़', 'साये पीछे हैं। राजमार्ग तक बस बीस सेकंड और।'],
-  [ESCAPE.scare, 'हेडलाइट में साया', 'झाड़ियों से कुछ निकल आया। कृष ने स्टीयरिंग मोड़ा और आगे बढ़ता रहा।'],
+  [ESCAPE.scare, 'हेडलाइट में साया', 'झाड़ियों से कुछ निकल आया। कृष ने स्टीयरिंग मोड़ा, रवि ने उसका हाथ थाम लिया।'],
   [ESCAPE.brush, 'टहनी से टक्कर', 'नीची टहनी CRETA से टकराकर छिटक गई। इस बार गाड़ी नहीं रुकी।'],
   [ESCAPE.shadows, 'पीछे मत देखना', 'पेड़ों के बीच कुछ अब भी साथ दौड़ रहा था।'],
   [ESCAPE.dawn, 'सड़क पर रोशनी', 'पेड़ों के पार हेडलाइटों की कतार दिखी। साये जंगल में ही रह गए।'],
-  [ESCAPE.junction, 'राजमार्ग सामने है', 'कृष ने रफ़्तार घटाई और चलती गाड़ियों के बीच जगह देखी।'],
+  [ESCAPE.junction, 'राजमार्ग सामने है', 'कृष ने रफ़्तार घटाई, रवि ने चलती गाड़ियों के बीच जगह देखी।'],
   [ESCAPE.merge, 'फिर से लोगों के बीच', 'CRETA राजमार्ग पर आ गई। ढाबे पर चाय बन रही थी और सुबह का ट्रैफ़िक चल पड़ा था।'],
 ]);
 export const escapeCopy = time => copyAt(ESCAPE_CARDS, time);
@@ -53,9 +53,30 @@ export const ESCAPE_CUES = cues([
   [ESCAPE.merge-.10, 'car-passing'], [ESCAPE.merge+.27, 'car-shift'], [ESCAPE.highway+.45, 'car-passing'],
 ]);
 export const ESCAPE_END = Object.freeze({
-  kicker: '05 / 05 · सुरक्षित बाहर', title: 'कृष बच निकला।',
-  text: 'CRETA राजमार्ग के सुबह के ट्रैफ़िक में जा मिली। ढाबे पर लोग जाग चुके थे। गाँव के साये जंगल की हद से आगे नहीं आए।',
+  kicker: '06:42 · राजमार्ग का ढाबा', title: '“साहब… आप अकेले थे।”',
+  text: 'ढाबे वाले ने चाय रखी और पूछा, “किसके साथ थे?” कृष ने कहा, “अपने दोस्त रवि के साथ।” दुकानदार उसके चेहरे को देखता रहा, फिर धीरे से बोला, “साहब… आपकी गाड़ी में तो आप अकेले थे।”',
 });
+
+// The ending keeps playing after the chase. Every card quietly replaces what
+// the previous one let you believe; the last one is not part of the escape at
+// all. ESCAPE_END stays the object shown the instant the chase cuts, so saved
+// games and the chapter tests keep a stable first frame.
+export const ENDING = Object.freeze({
+  photo: 5.4, phone: 10.2, reveal: 15.4, radio: 20.8, credits: 26.2, end: 33,
+});
+const LATER_ENDING_CARDS = cards('आख़िरी सिग्नल', [
+  [ENDING.photo, 'फ़ोटो में अब दो हैं', 'पिछली सीट पर वही तस्वीर पड़ी थी — पर इसमें अब तीन नहीं, सिर्फ़ कृष और दादा हैं। पीठ पर लिखा है: “रवि को हमने कभी गाँव से बाहर जाने नहीं दिया।”'],
+  [ENDING.phone, 'RAVI\'S PHONE CONNECTED', 'ब्लूटूथ अपने आप जुड़ गया। कृष के फ़ोन पर रवि का मैसेज आया: “भाई, घर पहुँचकर कॉल करना। पिछली सीट पर मैं ठीक से सो नहीं पाया।”'],
+  [ENDING.reveal, 'पिछली सीट', 'कृष ने रियर-व्यू मिरर में देखा। रवि वहीं बैठा था, सिर नीचे झुके। फिर उसने धीरे से सिर उठाया और मुस्कुराकर कहा: “अब अगली बार अकेले मत आना, कृष।”'],
+  [ENDING.radio, 'THE END?', 'रेडियो पर वही बूढ़ी आवाज़ लौट आई: “गाँव से दो लोग निकले थे… लेकिन वापस सिर्फ़ एक आया था।”'],
+  [ENDING.credits, 'रात 11:59 · वही सड़क', 'वही CRETA गाँव की उसी बिना नाम वाली सड़क पर वापस आती है। ड्राइवर सीट पर कोई नहीं। इंजन चालू है। रेडियो बोल उठता है: “तीसरा मेहमान पहुँच गया है।” अब गाँव को एक और मेहमान मिल गया है।'],
+]);
+export const ENDING_CARDS = Object.freeze([ESCAPE_END, ...LATER_ENDING_CARDS]);
+export const endingCopy=time=>copyAt(ENDING_CARDS,time);
+export const ENDING_CUES=cues([
+  [ENDING.photo,'radio-static'],[ENDING.phone,'car-key'],[ENDING.reveal,'ending-voice'],
+  [ENDING.radio,'radio-static'],[ENDING.credits,'radio-static'],
+]);
 
 // The cut after Krish shuts the bonnet skips his turn in the turnout. From
 // there the car follows the real arrival road back to the edge of the forest.
@@ -68,7 +89,7 @@ export const ESCAPE_LENGTH = MERGE_DISTANCE + 106.5;
 
 // This is a real trunk on the left of the arrival road, not a tree pasted
 // into the shot. The bumper stops at its near edge; the CRETA backs off it.
-export const IMPACT_TREE = Object.freeze({ x:-73.4252869464, z:24.6965738833, distance:90.033, offset:-3.087 });
+export const IMPACT_TREE = Object.freeze({ x:-73.02822615167405, z:24.458005305199265, distance:89.567, offset:-2.973924465287302, radius:.23173662426519953 });
 const atTree = IMPACT_TREE.distance;
 const course = [ // t, distance along road, metres per second at the knot
   [ESCAPE.roll,0,0],[8.44,16.4,9.35],[ESCAPE.pursuit,51.8,9.3],[ESCAPE.skid,81.5,8.4],

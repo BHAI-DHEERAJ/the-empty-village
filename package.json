@@ -8,6 +8,8 @@
   },
   "scripts": {
     "dev": "vite",
+    "chat": "node server/chat-server.mjs",
+    "start": "npm run build && node server/chat-server.mjs",
     "build": "vite build",
     "preview": "vite preview",
     "test": "node --test"

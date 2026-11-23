@@ -94,7 +94,7 @@ export function createEscapeCamera() {
         const glide=MathUtils.smoothstep(t,ESCAPE.highway,ESCAPE.tail)*drift;
         track(portrait?-7.9-glide*2.2:-4.5-glide*2.7,portrait?13.5:11.9,4.65+glide*.55);
         // Look across the near lanes so the people outside the dhaba stay
-        // in the frame while Krish pulls away in the foreground.
+        // in the frame while Krish and Ravi pull away together in the car.
         gaze.x+=4.45;gaze.z+=1.95;gaze.y+=.22;
         fov=portrait?62:52;
         break;

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#101713" />
-    <meta name="description" content="सातरोड कलां में कृष की गाड़ी रुक गई। गाँव, जंगल और नहर के पार पाँच आसान मिशन पूरे करो।" />
+    <meta name="description" content="गाँव में कोई ज़िंदा नहीं था… फिर हमारी गाड़ी में तीसरा कौन बैठा था? कृष और रवि के साथ सातरोड कलां का मनोवैज्ञानिक रहस्य।" />
     <meta name="screen-orientation" content="landscape" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -205,7 +205,7 @@
     </section>
     <main class="game-shell" id="game-shell" data-mode="loading" aria-label="सूना गाँव" inert>
       <canvas id="game-view" tabindex="0" aria-label="तुम्हारी नज़र से गाँव" aria-describedby="game-instructions"></canvas>
-      <p id="game-instructions" class="sr-only">W, A, S, D से चलो, Shift से दौड़ो और Space से कूदो। किसी चीज़ को इस्तेमाल करने के लिए E, टॉर्च के लिए F, फ़ोन के लिए P, नक्शे के लिए M और डायरी के लिए J दबाओ। माउस से देखने के लिए «गाँव में चलो» दबाओ और माउस छोड़ने के लिए Esc दबाओ। फ़ोन पर बाईं स्टिक से चलो और स्क्रीन पर उँगली खिसकाकर देखो। दौड़ने के लिए दौड़ बटन दबाए रखो। हरी लकीर मिशन की राह है। पूरे गाँव का रास्ता देखने के लिए नक्शे पर टैप करो। जिस चीज़ को इस्तेमाल करना है, उसकी तरफ़ देखकर इस्तेमाल दबाओ। मिशन की चीज़ें सुनहरी चमक से पहचानो।</p>
+      <p id="game-instructions" class="sr-only">W, A, S, D से चलो, Shift से दौड़ो और Space से कूदो। किसी चीज़ को इस्तेमाल करने के लिए E, टॉर्च के लिए F, फ़ोन के लिए P, चैट के लिए C, नक्शे के लिए M और डायरी के लिए J दबाओ। माउस से देखने के लिए «गाँव में चलो» दबाओ और माउस छोड़ने के लिए Esc दबाओ। फ़ोन पर बाईं स्टिक से चलो और स्क्रीन पर उँगली खिसकाकर देखो। दौड़ने के लिए दौड़ बटन दबाए रखो। हरी लकीर मिशन की राह है। पूरे गाँव का रास्ता देखने के लिए नक्शे पर टैप करो। जिस चीज़ को इस्तेमाल करना है, उसकी तरफ़ देखकर इस्तेमाल दबाओ। मिशन की चीज़ें सुनहरी चमक से पहचानो।</p>
 
       <header class="hud-top">
         <div class="compass" aria-hidden="true">
@@ -220,6 +220,10 @@
           </button>
           <button class="icon-button" type="button" id="phone-button" title="फ़ोन (P)" aria-label="फ़ोन" aria-haspopup="dialog" aria-controls="phone-panel" disabled>
             <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.25" y="2.8" width="11.5" height="18.4" rx="2"/><path d="M10 5h4m-2.75 13h1.5"/></svg>
+          </button>
+          <button class="icon-button" type="button" id="chat-button" title="गाँव की बातचीत (C)" aria-label="गाँव की बातचीत" aria-haspopup="dialog" aria-controls="chat-panel" aria-expanded="false" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v11H9l-5 3.5v-14Z"/><path d="M8 9.5h8M8 13h5"/></svg>
+            <span class="chat-badge" id="chat-badge" hidden>0</span>
           </button>
           <button class="icon-button" type="button" id="audio-button" title="आवाज़ चालू करो" aria-label="आवाज़" aria-pressed="false" disabled>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5.5 6 9H3.5v6H6l5 3.5v-13Z"/><path class="sound-waves" d="M15 9a4.3 4.3 0 0 1 0 6m2.8-8.1a7.4 7.4 0 0 1 0 10.2"/><path class="sound-mute" d="m15.5 10 4 4m0-4-4 4"/></svg>
@@ -258,7 +262,7 @@
         <details class="settings-controls">
           <summary>कंट्रोल</summary>
           <p><kbd>WASD</kbd> चलो · <kbd>Shift</kbd> दौड़ो · <kbd>Space</kbd> कूदो</p>
-          <p><kbd>E</kbd> इस्तेमाल · <kbd>F</kbd> टॉर्च · <kbd>P</kbd> फ़ोन · <kbd>M</kbd> नक्शा · <kbd>J</kbd> डायरी</p>
+          <p><kbd>E</kbd> इस्तेमाल · <kbd>F</kbd> टॉर्च · <kbd>P</kbd> फ़ोन · <kbd>C</kbd> चैट · <kbd>M</kbd> नक्शा · <kbd>J</kbd> डायरी</p>
           <p>माउस खींचकर या फ़ोन पर उँगली खिसकाकर देखो।</p>
         </details>
         <button type="button" id="settings-menu" class="settings-menu" lang="en">Main Menu</button>
@@ -316,7 +320,7 @@
           <div class="menu-main">
             <p class="menu-chapter"><span></span> आख़िरी सिग्नल</p>
             <h1 id="menu-title">सूना गाँव</h1>
-            <p class="menu-intro">CRETA ठीक करो और गाँव से बाहर निकलो।</p>
+            <p class="menu-intro">गाँव में कोई ज़िंदा नहीं था… फिर हमारी गाड़ी में तीसरा कौन बैठा था?</p>
             <nav class="menu-choices" aria-label="खेल शुरू करो">
               <button type="button" id="story-continue" class="menu-choice" disabled>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h11v15H6zm3.5 4.25h4m-4 3.25h4m-4 3.25h2"/></svg>
@@ -325,11 +329,21 @@
               </button>
               <button type="button" id="story-new" class="menu-choice">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 10 7-10 7z"/></svg>
-                <span><strong lang="en">New Game</strong><small>कृष की कहानी शुरू से</small></span>
+                <span><strong lang="en">New Game</strong><small id="new-game-sub">कृष और रवि की कहानी शुरू से</small></span>
                 <svg class="menu-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h14m-5-5 5 5-5 5"/></svg>
               </button>
             </nav>
+            <div class="character-select" role="group" aria-label="चैट का नाम चुनो (दोनों साथ हैं)">
+              <span class="eyebrow">दोनों साथ हैं · चैट का नाम चुनो</span>
+              <button type="button" id="character-krish" class="character-choice" data-character="krish" aria-pressed="true">
+                <strong>कृष</strong><small lang="en">Krish · CRETA चालक</small>
+              </button>
+              <button type="button" id="character-ravi" class="character-choice" data-character="ravi" aria-pressed="false">
+                <strong>रवि</strong><small lang="en">Ravi · साथी यात्री</small>
+              </button>
+            </div>
             <div class="menu-tools">
+              <button type="button" id="menu-chat-button" aria-haspopup="dialog" aria-controls="chat-panel" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.5 4h15v9.5H7l-4.5 3V4Z"/><path d="M6 7.5h8M6 10.5h5"/></svg><span>गाँव की चैट</span></button>
               <button type="button" id="menu-settings" aria-controls="settings-box" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 14h14M7 3v6m6 2v6"/></svg><span lang="en">Settings</span></button>
               <button type="button" id="menu-sound" aria-label="Sound" aria-pressed="true" lang="en"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m8 4-4 4H2v4h2l4 4zm4 3a4 4 0 0 1 0 6m2-9a8 8 0 0 1 0 12"/></svg><span id="menu-sound-label">Sound on</span></button>
             </div>
@@ -353,7 +367,7 @@
         <div class="confirm-actions"><button type="button" id="new-game-cancel" lang="en" autofocus>Cancel</button><button type="button" id="new-game-start" lang="en">Start New Game</button></div>
       </dialog>
       <audio id="car-radio-audio" preload="none" loop></audio>
-      <aside class="voice-caption" id="voice-caption" role="status" hidden><small>लंबा साया</small><span id="voice-text"></span></aside>
+      <aside class="voice-caption" id="voice-caption" role="status" hidden><small>अदृश्य आवाज़</small><span id="voice-text"></span></aside>
       <dialog id="tape-recorder" class="tape-recorder" aria-labelledby="tape-title">
         <header class="tape-head"><div><small id="tape-label"></small><h2 id="tape-title"></h2></div><button type="button" id="tape-close" class="icon-button" aria-label="टेप रिकॉर्डर बंद करो" autofocus>×</button></header>
         <div class="tape-deck" id="tape-deck" aria-hidden="true">
@@ -434,6 +448,9 @@
             </button>
             <button class="touch-key touch-phone" id="touch-phone" type="button" aria-label="कृष का फ़ोन खोलो" aria-haspopup="dialog" aria-controls="phone-panel" disabled>
               <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.2"/><path d="M10 5h4m-3 13h2"/></svg><span>फ़ोन</span>
+            </button>
+            <button class="touch-key touch-chat" id="touch-chat" type="button" aria-label="गाँव की बातचीत खोलो" aria-haspopup="dialog" aria-controls="chat-panel" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v11H9l-5 3.5v-14Z"/><path d="M8 9.5h8M8 13h5"/></svg><span>चैट</span>
             </button>
           </div>
           <div class="touch-stick" id="touch-stick" aria-hidden="true">

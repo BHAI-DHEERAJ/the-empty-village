@@ -1,7 +1,9 @@
+import { MathUtils } from 'three';
 import { INTRO } from '../game/story/IntroSequence.js';
 import { REPAIR } from '../game/story/RepairSequence.js';
-import { ESCAPE, ESCAPE_END, FINAL_RUN_SECONDS, FIX } from '../game/story/CretaFinale.js';
+import { ENDING, ESCAPE, ESCAPE_END, FINAL_RUN_SECONDS, FIX } from '../game/story/CretaFinale.js';
 import { CRETA_RETURN } from '../game/story/VillageChapter.js';
+import { glitchedText } from '../game/story/HouseClues.js';
 import { defaultTouchControls } from '../game/input/InputController.js';
 import { TapeRecorder } from './TapeRecorder.js';
 import { VOICE_LINES } from '../game/audio/VoiceLines.js';
@@ -11,11 +13,12 @@ import { VILLAGE_NAME } from '../game/world/VillageName.js';
 import { VillageMap } from './VillageMap.js';
 import { CarWaypoint } from './CarWaypoint.js';
 import { RideMusic } from './RideMusic.js';
+import { CHARACTERS, getCharacter, savedCharacterId, selectCharacter } from '../game/story/Characters.js';
 
 const DIRECTIONS = ['उत्तर', 'उत्तर-पूर्व', 'पूरब', 'दक्षिण-पूर्व', 'दक्षिण', 'दक्षिण-पश्चिम', 'पश्चिम', 'उत्तर-पश्चिम'];
 const TAPE_SCALE = 2.52;
 const EMPTY_ROUTE = Object.freeze([]);
-const STORY_LENGTH = { drive: INTRO.end, repair: REPAIR.end, 'final-repair': FIX.end, escape: ESCAPE.end };
+const STORY_LENGTH = { drive: INTRO.end, repair: REPAIR.end, 'final-repair': FIX.end, escape: ESCAPE.end, ending: ENDING.end };
 const digits = (value, min = 0) => String(value).padStart(min,'0');
 
 function storyFade(mode,time) {
@@ -23,6 +26,12 @@ function storyFade(mode,time) {
   if (mode === 'escape') {
     if (time < .55) return 1-time/.55;
     if (time >= ESCAPE.cut) return .35*(time-ESCAPE.cut)/(ESCAPE.end-ESCAPE.cut);
+  }
+  // The epilogue darkens over the rear-seat reveal; the post-credit road is
+  // dimmer still, ending on a near-black nameless road at 11:59 PM.
+  if (mode === 'ending') {
+    if (time >= ENDING.credits) return MathUtils.lerp(.52,.82,MathUtils.smoothstep(time,ENDING.credits,ENDING.end));
+    if (time >= ENDING.reveal) return .2*MathUtils.smoothstep(time,ENDING.reveal,ENDING.credits);
   }
   return 0;
 }
@@ -89,6 +98,7 @@ export class Hud {
     this.storyCover=find('story-cover');this.storyTitle=find('story-title');this.storyCopy=find('story-copy');
     this.menu=find('main-menu');this.storyMain=find('story-main');
     this.storyNew=find('story-new');this.storyContinue=find('story-continue');this.menuSave=find('menu-save');
+    this.newGameSub=find('new-game-sub');
     this.menuSettings=find('menu-settings');this.menuSound=find('menu-sound');this.menuSoundLabel=find('menu-sound-label');
     this.newGameConfirm=find('new-game-confirm');this.newGameCancel=find('new-game-cancel');this.newGameStart=find('new-game-start');
     this.storyExit=find('story-exit');this.storyEndMenu=find('story-end-menu');this.settingsMenu=find('settings-menu');
@@ -105,6 +115,10 @@ export class Hud {
     carAudio.src=this.teaAudio.src=RADIO_TRACK.src;
     this.teaAudio.volume=.77;
     this.phoneButtons=[find('phone-button'),find('touch-phone')];this.clock=find('world-clock');
+    this.chatButtons=[find('chat-button'),find('touch-chat')];this.chatBadge=find('chat-badge');
+    this.menuChatButton=find('menu-chat-button');
+    this.characterChoices=[...shell.querySelectorAll('[data-character]')];
+    this.character=getCharacter(savedCharacterId());
     this.hauntClue=find('haunt-clue');
     this.inputOptions = {
       stick: find('touch-stick'), thumb: find('touch-thumb'), jumpButton: this.jump, useButton: this.touchUse, runButton:this.run,
@@ -117,6 +131,7 @@ export class Hud {
     shell.append(this.toast);
     this.events = new AbortController();
     const {signal}=this.events;
+    this.#bindCharacters();
     this.rideMusic=new RideMusic(carAudio,signal);
     this.#rememberAudio(this.#preference('empty-village-sound'));
     this.recorder=new TapeRecorder(shell,{signal,mix:open=>this.ambience.setRadioOpen(open),change:(open,opener)=>{
@@ -143,11 +158,45 @@ export class Hud {
         this.#refreshTracker();this.onPanelChanged?.();
       }});
     for (const button of this.phoneButtons) button.addEventListener('click',()=>this.togglePhone(),{signal});
+    for (const button of this.chatButtons) button.addEventListener('click',()=>this.toggleChat(),{signal});
+    this.menuChatButton?.addEventListener('click',()=>this.toggleChat(),{signal});
     this.#bindMap(find('map-close'));
     this.#buildCompass();
     this.#bindButtons(find('retry-button'));
     this.#bindSettings(find('settings-close'),find('settings-reset'));
     this.#bindJournal();
+  }
+
+  #bindCharacters() {
+    const { signal } = this.events;
+    const apply = (id) => {
+      this.character = selectCharacter(id);
+      for (const choice of this.characterChoices) choice.setAttribute('aria-pressed', String(choice.dataset.character === id));
+      this.newGameSub.textContent = this.character.tagline;
+      this.onCharacter?.(this.character);
+    };
+    for (const choice of this.characterChoices) choice.addEventListener('click', () => apply(choice.dataset.character), { signal });
+    apply(savedCharacterId());
+  }
+
+  attachChat(chat) {
+    this.chat = chat;
+    chat.onOpenChange = (open) => {
+      [...this.chatButtons,...(this.menuChatButton?[this.menuChatButton]:[])].forEach(button => button.setAttribute('aria-expanded', String(open)));
+      this.#refreshTracker();this.onPanelChanged?.();
+      if (!open) this.shell.querySelector('canvas').focus({ preventScroll: true });
+    };
+    chat.onUnread = (count) => {
+      this.chatBadge.hidden = !count;
+      this.chatBadge.textContent = String(count);
+    };
+  }
+
+  toggleChat() {
+    if (!this.chat || this.shell.dataset.mode === 'loading' || this.shell.dataset.mode === 'error') return;
+    if (!this.chat.open && this.shell.dataset.story && this.shell.dataset.story !== 'menu') return;
+    if (!this.chat.open && this.panelOpen) return;
+    this.chat.toggle();
   }
 
   #buildCompass() {
@@ -289,7 +338,7 @@ export class Hud {
     }, { signal });
   }
 
-  get panelOpen() { return this.mapPanel.open || this.recorder.open || this.radioPanel.open || this.phone.open || !this.settings.hidden || !this.journal.hidden; }
+  get panelOpen() { return this.mapPanel.open || this.recorder.open || this.radioPanel.open || this.phone.open || !!this.chat?.open || !this.settings.hidden || !this.journal.hidden; }
 
   togglePhone(){
     if (this.phone.open || !this.phoneButtons[0].disabled && !this.shell.dataset.story && !this.panelOpen) this.phone.toggle();
@@ -317,10 +366,10 @@ export class Hud {
 
   openTape(id,complete){this.clearVoice();return this.recorder.show(id,complete);}
 
-  say(id){
+  say(id,position){
     const line=VOICE_LINES[id];if(!line||document.hidden||this.panelOpen)return;
     this.clearVoice();this.voiceText.textContent=line.text;this.voiceCaption.hidden=false;
-    this.ambience.speak(line.src);
+    this.ambience.speak(line.src,position);
     this.voiceTimer=window.setTimeout(()=>{this.voiceCaption.hidden=true;},Math.min(10,line.seconds??6)*1000);
   }
 
@@ -351,7 +400,7 @@ export class Hud {
 
   #refreshTracker() {
     const mode = this.shell.dataset.mode, panelOpen = this.panelOpen;
-    if (panelOpen) this.shell.dataset.panel = this.mapPanel.open ? 'map' : this.recorder.open ? 'tape' : this.radioPanel.open ? 'radio' : this.phone.open ? 'phone' : this.journal.hidden ? 'settings' : 'journal';
+    if (panelOpen) this.shell.dataset.panel = this.mapPanel.open ? 'map' : this.recorder.open ? 'tape' : this.radioPanel.open ? 'radio' : this.phone.open ? 'phone' : this.chat?.open ? 'chat' : this.journal.hidden ? 'settings' : 'journal';
     else delete this.shell.dataset.panel;
     this.fieldHud.hidden = !this.caseReady || panelOpen || !!this.shell.dataset.story || mode === 'loading' || mode === 'error';
     this.tracker.hidden = this.fieldHud.hidden || !this.caseTrack.checked;
@@ -379,7 +428,7 @@ export class Hud {
       title.textContent=mission.title;
       if(found){
         const details=document.createElement('details'),summary=document.createElement('summary');
-        summary.append(number,title);note.textContent=mission.text;details.append(summary,note);
+        summary.append(number,title);note.textContent=glitchedText(mission,(this.readCounts?.get(mission.id)??0)+1);details.append(summary,note);
         if(mission.tape){
           const replay=document.createElement('button');replay.type='button';replay.className='tape-replay';replay.textContent='रिकॉर्डिंग फिर सुनो';
           replay.addEventListener('click',()=>this.openTape(mission.tape));details.append(replay);
@@ -426,10 +475,10 @@ export class Hud {
 
   renderStory(mode,copy,log,time=0,clock='16:40',shot){
     const changed=this.storyCover.dataset.phase!==mode;
-    const chase=mode==='escape';
+    const chase=mode==='escape', shotMode=chase||mode==='ending';
     this.rideMusic.update(mode,time);
-    if(chase&&this.shell.dataset.escapeShot!==shot)this.shell.dataset.escapeShot=shot;
-    else if(!chase&&this.shell.hasAttribute('data-escape-shot'))delete this.shell.dataset.escapeShot;
+    if(shotMode&&this.shell.dataset.escapeShot!==shot)this.shell.dataset.escapeShot=shot;
+    else if(!shotMode&&this.shell.hasAttribute('data-escape-shot'))delete this.shell.dataset.escapeShot;
     this.storyCover.dataset.phase=mode;
     if(mode==='play'){
       this.storyCover.hidden=true;delete this.shell.dataset.story;this.#refreshTracker();return;
@@ -505,12 +554,16 @@ export class Hud {
 
   showEvidence(chapter, { readAgain = false } = {}) {
     clearTimeout(this.evidenceTimer);
+    const reads=(this.readCounts??=new Map());
+    const seen=(reads.get(chapter.id)??0)+1;reads.set(chapter.id,seen);
+    const glitched=seen>1;
     const n = (this.caseLog?.index.get(chapter.id)??-1)+1;
-    this.evidenceKicker.textContent = readAgain ? 'गाँव का सुराग' : n ? `मिशन ${digits(n, 2)} पूरा` : `${VILLAGE_NAME} से`;
+    this.evidenceKicker.textContent = glitched ? 'ये पंक्ति पहले जैसी नहीं है…' : readAgain ? 'गाँव का सुराग' : n ? `मिशन ${digits(n, 2)} पूरा` : `${VILLAGE_NAME} से`;
     this.evidenceTitle.textContent = chapter.item;
-    this.evidenceText.textContent = chapter.text;
+    this.evidenceText.textContent = glitchedText(chapter,seen);
+    this.evidenceText.classList.toggle('evidence-glitch',glitched);
     this.evidence.hidden=false;
-    this.evidenceTimer=window.setTimeout(()=>{this.evidence.hidden=true;},6100);
+    this.evidenceTimer=window.setTimeout(()=>{this.evidence.hidden=true;},glitched?8200:6100);
   }
 
   renderScare(level,showMask=false,showStalker=false) {
@@ -556,7 +609,7 @@ export class Hud {
     this.hint.hidden = mode !== 'locked';
     this.#refreshTracker();
     const disabled = mode === 'loading' || mode === 'error';
-    for (const button of [this.audio,this.journalButton,this.fullscreen,this.settingsButton,...this.flashlights,...this.phoneButtons]) button.disabled = disabled;
+    for (const button of [this.audio,this.journalButton,this.fullscreen,this.settingsButton,...this.flashlights,...this.phoneButtons,...this.chatButtons,...(this.menuChatButton?[this.menuChatButton]:[])]) button.disabled = disabled;
     this.status.textContent = {
       ready: 'गाँव खुल गया। चलो देखते हैं।', locked: 'माउस घुमाकर देखो। माउस छोड़ने के लिए Esc दबाओ।',
       drag: 'स्क्रीन खींचकर देखो। छोड़ने के लिए Esc दबाओ।', touch: 'बाईं स्टिक से चलो, दाईं ओर उँगली खिसकाकर देखो और दौड़ बटन दबाकर भागो।',
@@ -586,7 +639,7 @@ export class Hud {
   fail(message) {
     if(this.mapPanel.open)this.mapPanel.close();
     if(this.radioPanel.open)this.radioPanel.close();
-    this.newGameConfirm.close();this.recorder.close();this.clearVoice();this.phone.close();this.renderStory('play');this.setMode('error');
+    this.newGameConfirm.close();this.recorder.close();this.clearVoice();this.phone.close();this.chat?.close();this.renderStory('play');this.setMode('error');
     this.showSettings(false);this.#showJournal(false, false);
     this.renderInteraction(null);this.evidence.hidden = true;this.renderScare(0);
     this.errorText.textContent = message;
@@ -594,7 +647,7 @@ export class Hud {
   }
 
   dispose() {
-    this.events.abort();this.phone.close();this.recorder.close();this.clearVoice();
+    this.events.abort();this.phone.close();this.recorder.close();this.chat?.close();this.clearVoice();
     if(this.mapPanel.open)this.mapPanel.close();
     if(this.radioPanel.open)this.radioPanel.close();
     rewind(this.teaAudio);this.rideMusic.dispose();

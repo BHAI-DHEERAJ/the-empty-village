@@ -6,6 +6,29 @@ import { chooseRoadCrossing } from './WatcherRoad.js';
 import { WatcherSight } from './WatcherSight.js';
 
 const EXTRA=['wraith','crawler','twins','sentinel'];
+// Same four sculpted bodies, different predatory rules: a face that turns only
+// when unseen, a statue that walks in the dark, a child that scuttles in arcs.
+const VARIANTS=Object.freeze({
+  wraith:['faceless','drifting'],
+  crawler:['child','surface'],
+  twins:['echo','mirror'],
+  sentinel:['statue','mirror'],
+  road:['procession'],
+});
+const VARIANT_CUES=Object.freeze({
+  faceless:'ghost-whisper',drifting:'omen-whisper',child:'omen-child',surface:'omen-skitter',
+  echo:'omen-echo',mirror:'omen-mirror',statue:'omen-statue',procession:'omen-road',
+});
+const VARIANT_HINTS=Object.freeze({
+  faceless:'चेहरा… उसमें आँखें नहीं थीं।',
+  drifting:'कपड़ा हवा के बिना ही हिल रहा है…',
+  child:'किसी बच्चे के हौंके सुन रहे हो…',
+  surface:'मिट्टी के ऊपर से कुछ सरक गया।',
+  echo:'एक क़दम की दो गूंजें…',
+  mirror:'खिड़की में कोई और खड़ा है।',
+  statue:'जब तक देख रहे हो, वह नहीं हिलती।',
+  procession:'सड़क पर सायों का जुलूस…',
+});
 const PROFILES=Object.freeze({
   jump:{cue:'omen-shadow',lead:.95,limit:5.60,hold:.96,hint:'सड़क पर एक भारी परछाईं खिंच गई…'},
   wraith:{cue:'omen-whisper',lead:1.13,limit:3.2,hold:3.12,hint:'हवा में किसी की साँस सुनाई दी…'},
@@ -28,14 +51,15 @@ export class Haunts {
     this.lastSide=-1;this.lastRoad=null;this.lastType=null;
     this.order=[...EXTRA];
     for(let i=this.order.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[this.order[i],this.order[j]]=[this.order[j],this.order[i]];}
-    this.look=new Vector3();this.check=new Vector3();this.aim=new Vector3();this.soundAt=new Vector3();
+    this.look=new Vector3();this.check=new Vector3();this.aim=new Vector3();this.soundAt=new Vector3();this.stepVector=new Vector3();
     this.level=0;this.hint='';this.phase='idle';this.encounter=null;
   }
 
   setEnabled(on){this.enabled=on;if(!on&&this.encounter?.type==='jump')this.cancel();}
   #actor(type){return this.actors[type==='road'?'sentinel':type];}
+  #actorFor(encounter){return encounter?.variant==='faceless'?this.actors.faceless??this.#actor(encounter.type):this.#actor(encounter.type);}
   cancel(){
-    if(this.encounter)this.#actor(this.encounter.type).group.visible=false;
+    if(this.encounter){const actor=this.#actorFor(this.encounter);actor.group.visible=false;actor.group.scale.setScalar(1);}
     this.encounter=null;this.shadow.hide();this.phase='idle';this.level=0;this.hint='';
     this.nextAt=Math.max(this.nextAt,this.time+7.5);
   }
@@ -98,19 +122,25 @@ export class Haunts {
   }
 
   #begin(type,profile,mark,feet,forward){
-    this.encounter={type,profile,mark,forward:forward.clone(),origin:feet.clone(),start:this.time,shownAt:null};
-    this.phase='warning';this.hint=profile.hint;
+    const choices=VARIANTS[type]??[];
+    let variant=choices.length&&this.enabled&&!this.reducedMotion ? choices[Math.floor(this.random()*choices.length)] : null;
+    // A reflection belongs in a real window or doorway, never in a bare field.
+    if(variant==='mirror'&&!mark.siteId)variant=type==='sentinel'?'statue':'echo';
+    const active=variant?{...profile,cue:VARIANT_CUES[variant]??profile.cue,hint:VARIANT_HINTS[variant]??profile.hint}:profile;
+    const safeMark={...mark,pos:mark.pos.clone()};
+    this.encounter={type,variant,profile:active,mark:safeMark,forward:forward.clone(),origin:feet.clone(),start:this.time,shownAt:null};
+    this.phase='warning';this.hint=active.hint;
     this.lastType=type;
-    const actor=this.#actor(type);actor.group.visible=false;actor.group.rotation.set(0,mark.yaw,0);
-    actor.group.scale.setScalar(type==='sentinel'?mark.scale:1);actor.reset?.(mark.pose);
+    const actor=this.#actorFor(this.encounter);actor.group.visible=false;actor.group.rotation.set(0,mark.yaw,0);
+    actor.group.scale.setScalar(variant==='child'?.48:type==='sentinel'?mark.scale:1);actor.reset?.(mark.pose);
     if(type==='jump'){this.shadow.show(feet,forward);this.shadow.alpha(0);}
     // Sound always happens here, at least `lead` seconds before visibility.
     this.soundAt.copy(mark.cut?.from??mark.pos).y+=type==='crawler'?.37:1.24;
-    this.onCue(profile.cue,this.soundAt,type==='jump'?1.13:.99);
+    this.onCue(active.cue,this.soundAt,type==='jump'?1.13:.99);
   }
 
   #end(){
-    if(this.encounter)this.#actor(this.encounter.type).group.visible=false;
+    if(this.encounter){const actor=this.#actorFor(this.encounter);actor.group.visible=false;actor.group.scale.setScalar(1);}
     this.shadow.hide();this.phase='idle';this.encounter=null;this.hint='';this.level=0;
     this.nextAt=this.time+between(this.random,18,30);
   }
@@ -141,12 +171,17 @@ export class Haunts {
       if(!mark){this.nextAt=this.time+2.1;return;}
       this.index++;this.#begin(type,PROFILES[type],mark,feet,this.look);return;
     }
-    const {type,profile,mark}=e,age=this.time-e.start,actor=this.#actor(type),minGap=type==='road'?8.2:3.12;
+    const {type,profile,mark,variant}=e,age=this.time-e.start,actor=this.#actorFor(e),minGap=type==='road'?8.2:3.12;
     const gap=feet.distanceToSquared(mark.pos);
     if(seated||gap<minGap**2||feet.distanceToSquared(e.origin)>(type==='jump'?6.4:21)**2){this.#end();return;}
     if(this.phase==='warning'){
       if(age>=profile.limit){this.#end();return;}
-      if(type==='jump')this.shadow.alpha(MathUtils.smoothstep(age,0,.37)*(1-MathUtils.smoothstep(age,4.8,profile.limit)));
+      if(type==='jump'){
+        const strength=MathUtils.smoothstep(age,0,.37)*(1-MathUtils.smoothstep(age,4.8,profile.limit));
+        const gaze=this.shadow.gaze?this.shadow.gaze(view):1;
+        this.shadow.alpha(strength*gaze);
+        if(gaze<.12&&strength>.25)this.hint='देखते ही साया गायब हो गया…';
+      }
       if(age<profile.lead)return;
       // Turning around by itself isn't enough. The player must actually see
       // the spot behind them through the camera, not through a wall.
@@ -166,6 +201,21 @@ export class Haunts {
     actor.pose(t,this.reducedMotion,type==='road'?mark.path.length()*t/profile.hold:null);
     actor.veil((type==='jump'&&!this.reducedMotion?1:MathUtils.smoothstep(t,0,.49))*(1-MathUtils.smoothstep(t,profile.hold*.63,profile.hold)));
     actor.group.visible=true;
-    this.level=type==='jump'&&!this.reducedMotion?.67*(1-t/profile.hold)**2:0;
+    if(variant==='faceless'&&!e.flipped&&t>.42){e.flipped=true;actor.group.rotation.y+=Math.PI;}
+    if(variant==='procession'&&!e.echoed&&t>profile.hold*.4){e.echoed=true;this.onCue('ghost-whisper',this.soundAt,.76);}
+    if(variant==='statue'&&!this.reducedMotion&&t>.26&&!this.sight.observe(mark).visible){
+      // The perfect technique for a still room: it only advances while you
+      // are not looking. It never crosses the safe radius.
+      this.stepVector.copy(feet).sub(mark.pos).setY(0);
+      const length=this.stepVector.length();
+      if(length>5.9){
+        this.stepVector.multiplyScalar(Math.min(length-5.9,dt*.78)/length);
+        const next=this.#point(mark.pos.x+this.stepVector.x,mark.pos.z+this.stepVector.z,mark.pos.y,1);
+        if(next){mark.pos.copy(next);actor.group.position.copy(next);}
+      }
+    }
+    const base=type==='jump'&&!this.reducedMotion?.67*(1-t/profile.hold)**2:0;
+    const dread=variant&&!this.reducedMotion?.14*(1-t/profile.hold)**2:0;
+    this.level=Math.min(.82,base+dread);
   }
 }

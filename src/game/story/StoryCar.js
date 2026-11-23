@@ -1,17 +1,18 @@
-import { CatmullRomCurve3, Group, Mesh, MeshBasicMaterial, PointLight, SphereGeometry, SpotLight, Vector3, MathUtils } from 'three';
+import { CatmullRomCurve3, Group, Mesh, MeshBasicMaterial, MeshStandardMaterial, PointLight, SphereGeometry, SpotLight, Vector3, MathUtils } from 'three';
 import { ModelBatch } from '../world/village/modeling.js';
 import { poseBox } from '../world/physics/CollisionWorld.js';
 import { lettering } from '../world/village/lettering.js';
 import { carMotion, INTRO } from './IntroSequence.js';
 import { REPAIR } from './RepairSequence.js';
-import { ESCAPE, escapeDaylight, escapeJolt, escapeMotion, escapeRoad, FIX } from './CretaFinale.js';
+import { ENDING, ESCAPE, escapeDaylight, escapeJolt, escapeMotion, escapeRoad, FIX } from './CretaFinale.js';
 import { createCretaDriver } from './CretaDriver.js';
+import { createCretaPassenger } from './CretaPassenger.js';
 import { createEscapeCamera } from '../camera/EscapeCinematography.js';
 import { modelWrench } from './Wrench.js';
 import { CRETA_NAME, mountCretaBadges } from './CarBadge.js';
 export { CRETA_NAME } from './CarBadge.js';
 import { VILLAGE_REGION } from '../world/VillageName.js';
-import { ARRIVAL_ROAD, groundHeight } from '../world/sceneryLayout.js';
+import { ARRIVAL_ROAD, COMPANION_ROAD, groundHeight } from '../world/sceneryLayout.js';
 
 export const CAR_EXIT = Object.freeze({ x:.34, y:0, z:5.9 });
 export const VILLAGE_SIGN = [-2.55,1.67,-2.9];
@@ -20,16 +21,17 @@ export const PARKED = new Vector3(1.92,0,7.62);
 export const REPAIR_STANCE = Object.freeze({ x:1.92, y:0, z:4.19 });
 const PI=Math.PI;
 
-// Follow the same dirt road the player can walk later. The final few metres
-// pull over on the existing main road rather than cutting across the village.
+// Krish and Ravi come in on the new sheltered forest track. The final few
+// metres pull over on the existing main road rather than cutting across the
+// village; the old ARRIVAL_ROAD is still their way out in the escape.
 const pullOver=[[.08,17.2],[.72,13.12],[1.89,10.05],[PARKED.x,PARKED.z]];
-export const approachCurve=new CatmullRomCurve3([...ARRIVAL_ROAD.path,...pullOver].map(([x,z])=>new Vector3(x,groundHeight(x,z),z)));
+export const approachCurve=new CatmullRomCurve3([...COMPANION_ROAD.path,...pullOver].map(([x,z])=>new Vector3(x,groundHeight(x,z),z)));
 approachCurve.arcLengthDivisions=1024;
 const APPROACH_LENGTH=approachCurve.getLength(), routeLook=14.8/APPROACH_LENGTH;
 
 // The opening and the parked prop are the same car, not a video or backdrop.
 export function buildStoryCar(scene,p,collision) {
-  const car=new Group();car.name=`${CRETA_NAME} · Krish`;car.position.copy(PARKED);scene.add(car);
+  const car=new Group();car.name=`${CRETA_NAME} · कृष + रवि`;car.position.copy(PARKED);scene.add(car);
   const b=new ModelBatch(car);
   const tailGlow=new MeshBasicMaterial({color:0xf35743});
   const lampGlow=new MeshBasicMaterial({color:0xffe1ae});
@@ -182,11 +184,34 @@ export function buildStoryCar(scene,p,collision) {
   cabin.position.set(.05,1.34,.13);car.add(cabin);
   const gaze=new Vector3(),direction=new Vector3(),beam=new Vector3(),signGaze=new Vector3(...VILLAGE_SIGN),markerGaze=new Vector3(...ROAD_MARKER);
   const inspectFrom=new Vector3(.78,1.69,4.86),fixFrom=new Vector3(2.92,1.96,4.41),eye=new Vector3();
-  const chaseCamera=createEscapeCamera(), beamTangent=new Vector3(),krish=createCretaDriver(car,p,wheel);
+  const chaseCamera=createEscapeCamera(), beamTangent=new Vector3(),rearAim=new Vector3();
+  const krish=createCretaDriver(car,p,wheel),ravi=createCretaPassenger(car,p);
+  // Final Seat Twist: the passenger seat is empty at the end. This second
+  // figure only exists for the rear-view reveal and the post-credit road.
+  const rear=new Group();rear.name='रवि · पिछली सीट';rear.visible=false;car.add(rear);
+  const rearSkin=new MeshStandardMaterial({color:0xa97755,roughness:.87});
+  const rearShirt=new MeshStandardMaterial({color:0x35484c,roughness:.9});
+  const rearBody=new ModelBatch(rear);
+  rearBody.ball(rearShirt,-.02,.99,1.03,.22,{sx:1.08,sy:1.32,sz:.70});
+  rearBody.finish('रवि · पिछली सीट का धड़');
+  const rearHead=new Group();rearHead.position.set(-.02,1.22,1.03);rear.add(rearHead);
+  const rearFace=new ModelBatch(rearHead);
+  rearFace.ball(rearSkin,0,0,0,.105,{sx:.90,sy:1.18,sz:1.04});
+  rearFace.ball(p.rubber,0,.041,.012,.101,{sx:.98,sy:.90,sz:1.03});
+  rearFace.finish('रवि · पिछली सीट का चेहरा');
+  const rearRavi={
+    hide(){rear.visible=false;},
+    reveal(t){
+      rear.visible=true;
+      const lift=MathUtils.smoothstep(t,ENDING.reveal+.4,ENDING.reveal+1.6);
+      rearHead.rotation.x=(1-lift)*1.16;
+      rearHead.rotation.y=-.16*MathUtils.smoothstep(t,ENDING.reveal+1.4,ENDING.reveal+2.6);
+    },
+  };
   return {
     car, lamps, solid, hood,
     park(){
-      car.position.copy(PARKED);car.rotation.set(0,0,0);cabin.intensity=0;tailGlow.color.setHex(0xf35743);krish.hide();
+      car.position.copy(PARKED);car.rotation.set(0,0,0);cabin.intensity=0;tailGlow.color.setHex(0xf35743);krish.hide();ravi.hide();rearRavi.hide();
       poseBox(solid,PARKED.x,PARKED.z,0);
       hood.rotation.x=wheel.rotation.z=0;tool.visible=check.visible=false;for(const obj of steam)obj.visible=false;
       for(const lamp of lamps){lamp.intensity=46;lamp.target.position.set(-1.15,.67,-20);}
@@ -222,9 +247,11 @@ export function buildStoryCar(scene,p,collision) {
         lamp.target.position.copy(beam);lamp.target.position.x+=lamp.position.x*.9;
       }
       cabin.position.set(.05,1.34,.13);cabin.intensity=ready?.56:.84;
+      if(ready){krish.hide();ravi.hide();}else ravi.pose(t,'drive',reducedMotion);
     },
     repair(view,t,reducedMotion){
       car.position.copy(PARKED);car.rotation.y=0;check.visible=false;cabin.intensity=0;
+      krish.hide();ravi.hide();
       for(const l of lamps)l.intensity=0;
       const open=MathUtils.smoothstep(t,REPAIR.bonnet,2.4)*(1-MathUtils.smoothstep(t,REPAIR.close,15.7));
       hood.rotation.x=open*1.07;
@@ -251,6 +278,7 @@ export function buildStoryCar(scene,p,collision) {
     },
     finalRepair(view,t,reducedMotion,from){
       car.position.copy(PARKED);car.rotation.set(0,0,0);check.visible=false;
+      krish.hide();ravi.hide();
       hood.rotation.x=1.18*MathUtils.smoothstep(t,FIX.bonnet,1.23)*(1-MathUtils.smoothstep(t,FIX.close,4.44));
       const reach=MathUtils.smoothstep(t,FIX.tools,1.57)*(1-MathUtils.smoothstep(t,3.36,3.75));
       tool.visible=reach>.008;driver.visible=false;spanner.visible=true;
@@ -297,7 +325,31 @@ export function buildStoryCar(scene,p,collision) {
       wheel.rotation.z=MathUtils.clamp(beam.x*.095+steering*1.3,-.51,.51);
       motion.shot=chaseCamera(view,car,t,motion,reducedMotion);
       krish.pose(t,motion.shot,reducedMotion);
+      ravi.pose(t,motion.shot,reducedMotion);
       return motion;
+    },
+    // Krish turns from the highway to the back of the cabin. The front
+    // passenger is gone; the head in the rear seat slowly lifts.
+    rearSeatShot(view,t,reducedMotion){
+      this.escape(view,ESCAPE.end,reducedMotion);
+      ravi.hide();rearRavi.reveal(t);
+      car.localToWorld(view.position.set(.34,1.44,-.10));
+      rearAim.set(-.02,1.20,1.03);car.localToWorld(rearAim);
+      view.lookAt(rearAim);
+      if(view.fov!==58){view.fov=58;view.updateProjectionMatrix();}
+      return {shot:'rear-seat'};
+    },
+    // Same CRETA, same nameless road, 11:59 PM. Nobody is driving it.
+    postCredits(view,t,reducedMotion){
+      this.park();
+      car.rotation.y=.28;poseBox(solid,car.position.x,car.position.z,car.rotation.y);
+      for(const lamp of lamps)lamp.intensity=224;
+      cabin.intensity=.42;
+      const sway=reducedMotion?0:Math.sin(t*1.7)*.045;
+      view.position.set(PARKED.x+6.9+sway,2.32,PARKED.z+8.4);
+      view.lookAt(PARKED.x,.96,PARKED.z);
+      if(view.fov!==62){view.fov=62;view.updateProjectionMatrix();}
+      return {shot:'post-credits'};
     },
   };
 }

@@ -64,6 +64,8 @@ export class ScareDirector {
     this.#reserve();
     if (kind === 'swing') this.#accent('scare-metal', at, .47);
     else if (kind === 'radio') this.#accent('scare-radio', at, .61);
+    else if (kind === 'mirror') this.#accent('scare-reverse', at, .58);
+    else if (kind === 'child') this.#accent('scare-heartbeat', at, .52);
     else this.#accent('scare-eyes', at, .72);
     return true;
   }

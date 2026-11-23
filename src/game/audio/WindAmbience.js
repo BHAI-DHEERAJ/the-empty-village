@@ -1,6 +1,7 @@
 import { Vector3 } from 'three';
 import { createVillageSounds } from './VillageSounds.js';
 import { createVillageScore } from './VillageScore.js';
+import { createDreadLayer } from './DreadLayer.js';
 import { createCarDriveAudio } from './CarDriveAudio.js';
 import { roadEdge } from '../world/sceneryLayout.js';
 
@@ -42,8 +43,13 @@ export class WindAmbience {
 
   #mixScore(){
     const audible=this.enabled&&!this.radioOpen&&this.musicEnabled&&this.chapterMode==='play';
-    if(audible&&this.context?.state==='running')this.score??=createVillageScore(this.context,this.master);
+    if(audible&&this.context?.state==='running'){
+      this.score??=createVillageScore(this.context,this.master);
+      this.dread??=createDreadLayer(this.context,this.master);
+    }
     this.score?.setAudible(audible);
+    this.dread?.setAudible(audible);
+    if(!audible)this.dread?.setTension(0);
   }
 
   #noise(seconds,channels=1,color=.38){
@@ -113,10 +119,12 @@ export class WindAmbience {
     noise.onended=()=>{noise.disconnect();filter.disconnect();gain.disconnect();p.disconnect();};
   }
 
-  update(elapsed,view,player,room,{rain=0,paused=false}={}){
+  update(elapsed,view,player,room,{rain=0,paused=false,tension=0}={}){
     const c=this.context;
     if(!this.enabled||!c||c.state!=='running')return;
     this.score?.update();
+    this.dread?.setTension(Math.max(tension,this.cueTension??0));
+    this.cueTension=Math.max(0,(this.cueTension??0)-.006);
     const now=c.currentTime,{x,y,z}=view.position;
     const dt=this.lastTime==null?0:Math.min(.12,Math.max(0,elapsed-this.lastTime));this.lastTime=elapsed;
     view.getWorldDirection(this.look);this.#orient(c.listener,x,y,z);
@@ -156,6 +164,7 @@ export class WindAmbience {
   villageCue(type, position, strength = 1) {
     if (!this.enabled || this.context?.state !== 'running') return;
     this.villageSounds ??= createVillageSounds(this.context, this.master);
+    if(/^(omen|scare|stalker|haunt|ghost|child|bone)/.test(type))this.cueTension=Math.max(this.cueTension??0,.55);
     this.villageSounds.cue(type, position, strength);
   }
 
@@ -174,7 +183,9 @@ export class WindAmbience {
     if(mode!=='drive'&&mode!=='escape')this.driveAudio?.stop();
   }
 
-  async speak(url){
+  // A position makes the voice a world event: Ravi can call from behind the
+  // CRETA, from the school or from the trees while still looking at you.
+  async speak(url,position){
     this.stopSpeaking();
     const context=this.context,token=this.voiceToken;
     if(!this.enabled||context?.state!=='running')return;
@@ -188,9 +199,13 @@ export class WindAmbience {
       const decoded=await buffer;
       if(token!==this.voiceToken||context.state!=='running'||!this.enabled)return;
       const source=context.createBufferSource(),gain=context.createGain();
-      gain.gain.value=.80;source.buffer=decoded;source.connect(gain).connect(this.master);
+      const placed=position&&Number.isFinite(position.x)&&Number.isFinite(position.z);
+      gain.gain.value=placed?.49:.80;source.buffer=decoded;source.connect(gain);
+      let panner=null;
+      if(placed){panner=this.#pan();this.#orient(panner,position.x,position.y??1.45,position.z);gain.connect(panner).connect(this.master);}
+      else gain.connect(this.master);
       this.voiceSource=source;
-      source.onended=()=>{source.disconnect();gain.disconnect();if(this.voiceSource===source)this.voiceSource=null;};
+      source.onended=()=>{source.disconnect();gain.disconnect();panner?.disconnect();if(this.voiceSource===source)this.voiceSource=null;};
       source.start();
     }catch{this.voiceBuffers.delete(url);}
   }
@@ -205,5 +220,5 @@ export class WindAmbience {
   pauseRide(){this.driveAudio?.stop(true);}
   finishRide(){this.driveAudio?.stop();this.rideCue('car-stop');}
 
-  dispose(){this.stopSpeaking();this.driveAudio?.stop(true);this.context?.close().catch(()=>{});}
+  dispose(){this.stopSpeaking();this.driveAudio?.stop(true);this.dread?.dispose();this.context?.close().catch(()=>{});}
 }

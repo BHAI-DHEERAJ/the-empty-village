@@ -7,6 +7,14 @@ import { between, seededRandom } from './random.js';
 import { imageMaterial } from './materials.js';
 import { nightMaterial } from './shaders.js';
 import { CANAL, fieldAt, groundHeight, isEntrance, isSceneryFootprint, pathEdge } from './sceneryLayout.js';
+import { spurEdge } from './HighwayLayout.js';
+import { escapeCurve, IMPACT_TREE } from '../story/CretaFinale.js';
+
+// Sampled once: the cinematic escape camera needs a clear verge around the
+// whole arrival road, not just a wheel-width corridor, or trunks cut across
+// its sightline to the CRETA.
+const ESCAPE_VERGE = escapeCurve.getSpacedPoints(160).map(p => [p.x, p.z]);
+const nearEscape = (x, z, radius) => ESCAPE_VERGE.some(([px, pz]) => (x - px) ** 2 + (z - pz) ** 2 < radius * radius);
 
 const UP = new Vector3(0, 1, 0);
 const TREE_HEIGHT = 10;
@@ -174,11 +182,18 @@ const clampForest=(n)=>Math.max(0,Math.min(1,n));
 
 function scatterTrees(){
   const r=seededRandom(13093), trees=[];
+  // The escape spur is a real drivable corridor through this same forest, so
+  // keep every trunk and root clear of the CRETA's swept box all the way to
+  // the highway merge — not just clear of the village walking paths.
   const good=(x,z)=>!isSceneryFootprint(x,z,1.05)&&!isEntrance(x,z,.42)&&pathEdge(x,z)>.47
+    && spurEdge(x,z)>.85 && !nearEscape(x,z,6)
     &&(Math.abs(x-CANAL.x)>4.02||z<CANAL.z0-2||z>CANAL.z1+2);
   const plant=(x,z,h,kind,clearance=2.9)=>{
+    // Always draw the same random values for a candidate, accepted or not, so
+    // tuning the clearance rules never reshuffles the entire forest.
+    const ry=r()*TWO_PI,girth=between(r,.78,1.16),tint=between(r,.71,1.20);
     if(!good(x,z)||trees.some(t=>(t.x-x)**2+(t.z-z)**2<clearance**2))return;
-    trees.push({x,z,h,kind,ry:r()*TWO_PI,girth:between(r,.78,1.16),tint:between(r,.71,1.20)});
+    trees.push({x,z,h,kind,ry,girth,tint});
   };
   // Large neem and acacia silhouettes frame the inhabited lanes; smaller stems pack the forest west of them.
   for(const [x,z,h,k] of [[-6.9,-5.1,10.0,0],[7.8,-6.9,10.63,1],[-9.9,2.6,12.7,0],[11.5,4.2,9.7,1],[-7.2,-15.9,8.9,1],
@@ -194,6 +209,11 @@ function scatterTrees(){
     if(x>-32&&x<44&&z>-90&&z<3&&r()<.69)continue;
     plant(x,z,between(r,6.8,13.2),r()<.52?0:r()<.79?1:r()<.91?2:4,3.59);
   }
+  // The trunk the CRETA strikes in the finale is an authored landmark, not a
+  // lucky scatter seed. Pinning it keeps the bumper contact and its collision
+  // solid stable even when road layouts or clearances change.
+  const girth=IMPACT_TREE.radius/(8*.029);
+  trees.push({x:IMPACT_TREE.x,z:IMPACT_TREE.z,h:8,kind:0,ry:.6,girth,tint:.86});
   return trees;
 }
 

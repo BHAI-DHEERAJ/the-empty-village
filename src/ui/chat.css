@@ -1,0 +1,65 @@
+/* Live village chat — a dead-radio terminal layered over the horror HUD. */
+.chat-dialog {
+  position: fixed; inset: 0; width: min(680px, 94vw); max-width: none;
+  height: min(670px, 88dvh); max-height: none; margin: auto; padding: 0;
+  color: var(--ink); background: #0e1414f5; border: 1px solid #a98b5b70;
+  border-radius: 4px; box-shadow: 0 24px 90px #000e, 0 0 0 1px #0008 inset;
+  overflow: hidden; user-select: text;
+}
+.chat-dialog::backdrop { background: radial-gradient(circle at 50% 35%, #0d1211c9, #020404f2); backdrop-filter: blur(3px); }
+.chat-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 17px 20px 13px; border-bottom: 1px solid var(--rule); background: linear-gradient(#1b231e, #101614); }
+.chat-head small { color: #a98f5a; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; }
+.chat-head h2 { margin: 5px 0 0; font: 400 clamp(21px, 3vw, 29px)/1.1 'Noto Serif Devanagari', serif; color: #f1e6cd; }
+.chat-close { font-size: 21px; line-height: 1; }
+.chat-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 9px 20px; border-bottom: 1px solid #ffffff12; font-size: 11px; }
+.chat-status { display: inline-flex; align-items: center; gap: 6px; color: #c2877f; }
+.chat-status i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.chat-status[data-state='online'] { color: #9dc49a; }
+.chat-count { color: #8d8877; margin-right: auto; }
+.chat-tab { padding: 5px 11px; border: 1px solid #ffffff1c; background: #ffffff08; color: #b8b2a3; cursor: pointer; font-size: 11px; }
+.chat-tab[aria-pressed='true'] { border-color: #b99a6399; color: #f2d6a4; background: #b99a6318; }
+.chat-scroll, .chat-players { height: min(400px, 52dvh); overflow-y: auto; overscroll-behavior: contain; padding: 14px 20px; }
+.chat-scroll { list-style: none; margin: 0; display: flex; flex-direction: column; gap: 11px; scrollbar-color: #6a5b3f transparent; }
+.chat-message { border-left: 2px solid #8d774b; background: #ffffff06; padding: 8px 11px; line-height: 1.55; }
+.chat-message[data-pending='true'] { opacity: .55; }
+.chat-meta { display: flex; gap: 9px; align-items: baseline; flex-wrap: wrap; font-size: 11px; }
+.chat-meta b { color: #e8c88d; font-weight: 600; }
+.chat-meta time { color: #7e796c; font-family: 'IBM Plex Mono', monospace; }
+.chat-where { color: #778b7b; }
+.chat-message p { margin: 4px 0 0; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.chat-whisper { border-color: #9a629b; color: #cfb0d2; background: #6f3f7720; font-style: italic; }
+.chat-whisper .chat-meta b { color: #cba4cc; }
+.chat-system { border-color: #577a8c; color: #a7bdc7; background: #3d607020; font-size: 12px; }
+.chat-player { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 2px; border-bottom: 1px solid #ffffff10; font-size: 13px; }
+.chat-player b { color: #e8c88d; font-weight: 500; }
+.chat-player small { color: #8d8877; }
+.chat-empty { color: #8d8877; line-height: 1.7; }
+.chat-form { padding: 12px 20px 16px; border-top: 1px solid var(--rule); background: #111815; }
+.chat-name { width: 100%; margin-bottom: 9px; padding: 7px 10px; font: 500 11px 'IBM Plex Mono', monospace; color: #a98f5a; background: #05090880; border: 1px solid #ffffff14; }
+.chat-compose { display: flex; gap: 8px; }
+.chat-input { flex: 1; min-width: 0; padding: 11px 12px; font: inherit; font-size: 13px; color: var(--ink); background: #060a09; border: 1px solid #b99a634a; border-radius: 2px; }
+.chat-input::placeholder { color: #6d6c62; }
+.chat-send { padding: 0 17px; border: 1px solid #b99a6399; background: #2a2a1d; color: #f0d5a3; cursor: pointer; font-size: 12px; }
+.chat-send:hover { background: #43402a; }
+.chat-foot { display: block; margin-top: 9px; color: #7d796d; font-size: 10px; }
+.chat-foot a { color: #a98f5a; }
+.chat-badge { position: absolute; top: -5px; right: -6px; min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px; background: #9c3c3c; color: #fff0e0; font: 600 9px/15px 'IBM Plex Mono', monospace; text-align: center; }
+#chat-button { position: relative; }
+.game-shell[data-mode='touch'] .touch-gear { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.game-shell[data-mode='touch'] .touch-gear .touch-chat { border-color: #b99a6355; }
+#menu-chat-button { border-color: #b99a6366; color: #f0d5a3; }
+#menu-chat-button[aria-expanded='true'] { background: #b99a6318; border-color: #d9b878; }
+#menu-chat-button svg { color: #e8c88d; }
+.character-select { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; margin-top: 16px; }
+.character-select > .eyebrow { width: 100%; color: #a98f5a; font-size: 10px; letter-spacing: .12em; }
+.character-choice { display: grid; gap: 2px; min-width: 122px; padding: 8px 12px; text-align: left; border: 1px solid #ffffff20; border-radius: 3px; background: #ffffff08; cursor: pointer; }
+.character-choice strong { font: 400 17px 'Noto Serif Devanagari', serif; color: #e9e0cb; }
+.character-choice small { color: #8f8a7b; font-size: 9px; }
+.character-choice[aria-pressed='true'] { border-color: #b99a6399; background: #b99a6318; }
+.character-choice[aria-pressed='true'] strong { color: #f2d6a4; }
+@media (max-width: 520px) {
+  .chat-dialog { width: 96vw; height: 92dvh; }
+  .chat-scroll, .chat-players { padding: 11px 13px; }
+  .chat-head, .chat-bar, .chat-form { padding-left: 13px; padding-right: 13px; }
+  .chat-message p { font-size: 12px; }
+}

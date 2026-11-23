@@ -1,4 +1,4 @@
-import { ACESFilmicToneMapping, BasicShadowMap, MathUtils, PCFShadowMap, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { ACESFilmicToneMapping, BasicShadowMap, MathUtils, PCFShadowMap, PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
 import { createWorld } from './world/createWorld.js';
 import { loadLetteringFont } from './world/village/lettering.js';
 import { disposeWorldTextures, loadWorldTextures } from './world/textures.js';
@@ -10,13 +10,14 @@ import { MissionGuide } from './interaction/MissionGuide.js';
 import { MissionHighlight } from './interaction/MissionHighlight.js';
 import { ChapterLog } from './story/VillageChapter.js';
 import { ChapterDirector } from './story/ChapterDirector.js';
-import { ESCAPE, FIX, escapeMotor } from './story/CretaFinale.js';
+import { ENDING, ESCAPE, FIX, escapeMotor } from './story/CretaFinale.js';
 import { createImpactDust } from './story/ImpactDust.js';
 import { createFinaleHazards } from './story/FinaleHazards.js';
 import { createHighwayScene } from './world/HighwayScene.js';
 import { createGhostHorde } from './watcher/GhostHorde.js';
 import { createStalkerModel, StalkerDirector } from './watcher/Stalker.js';
 import { CAR_EXIT } from './story/StoryCar.js';
+import { createFalseCompanion } from './story/FalseCompanion.js';
 import { VillagePanorama } from './camera/VillagePanorama.js';
 import { ScareDirector } from './interaction/ScareDirector.js';
 import { CAMERA } from './settings.js';
@@ -87,6 +88,8 @@ export class Game {
     this.stalker=new StalkerDirector({collision:this.world.collision,occlusion,
       actor:createStalkerModel(this.scene,this.textures,{compact}),log:this.caseLog,cue,voice:id=>this.hud.say(id),
       enabled:this.hud.scareSetting.checked,reducedMotion});
+    this.falseCompanion=createFalseCompanion(this.scene);
+    this.nextMimicAt=18;this.mimicIndex=0;this.mimicAt=new Vector3();
     this.storm=new Storm({random:seededRandom(this.caseLog.seed^0xea152),reducedMotion,onThunder:(at,strength)=>cue('thunder-roll',at,strength)});
     this.player=new PlayerController({collision:this.world.collision,spawn:CAR_EXIT});
     this.camera=new FirstPersonCamera(this.view,{compact,reducedMotion});
@@ -107,16 +110,19 @@ export class Game {
       sound:(type,at,strength)=>{
         if(type==='car-stop')ambience.finishRide();
         else if(type==='stalker-crowd'||type==='stalker-tree')this.hud.say(type);
+        else if(type==='ending-voice')this.hud.say('tape-last');
         else if(at)cue(type,at,strength);
         else ambience.rideCue(type);
       },
     });
+    this.character=this.hud.character;
     this.hud.phone.bindLog(this.caseLog);
     this.hud.onPhonePreview=()=>this.#photo();
     this.hud.onPhoneAction=(type,contact)=>{
       const result=this.chapter.phoneAction(type,contact,this.player,this.camera.yaw);
       if(result.capture){cue('phone-shot',this.view.position);result.src=this.#photo();}
       else if(result.cue)cue(result.cue,this.view.position,.96);
+      if(result.voice)this.hud.say(result.voice);
       if(result.skipped){
         this.hud.renderCase(this.caseLog);
         this.interactions.nextAim=0;
@@ -130,6 +136,7 @@ export class Game {
       onJournal:()=>{if(!this.chapter.cinematic&&!this.hud.radioPanel.open&&!this.hud.phone.open&&!this.hud.recorder.open)this.hud.toggleJournal();},
       onPhone:()=>this.hud.togglePhone(),
       onMap:()=>this.hud.toggleMap(),
+      onChat:()=>this.hud.toggleChat(),
       optionsOpen:()=>this.hud.panelOpen||this.chapter.cinematic,
       keepCursor:()=>this.hud.cursorSetting.checked,
     });
@@ -213,7 +220,7 @@ export class Game {
     this.view.aspect = width / height;
     this.view.updateProjectionMatrix();
     this.panorama?.resize(this.view.aspect);
-    this.menuFrame=null;this.endingDrawn=false;
+    this.menuFrame=null;
   }
 
   #enterVillage(){
@@ -224,7 +231,23 @@ export class Game {
     this.input.enter();
   }
 
+  // Voice Mimic: the same Ravi-like voice answers from behind the CRETA, the
+  // school and the trees. It is always just outside your field of view.
+  #voiceMimic(time,{feet}){
+    if(!this.hud.scareSetting.checked||this.stalker.active||this.hud.panelOpen||document.hidden)return;
+    if(time<(this.nextMimicAt??18))return;
+    const id=['stalker-road','stalker-crowd','stalker-tree'][this.mimicIndex++%3];
+    const side=this.mimicIndex%2?1:-1;
+    // Just outside the view cone: about 95° off-centre so the voice never
+    // appears to come from the Ravi you can see in the passenger seat.
+    const angle=this.camera.yaw+side*(1.62+Math.min(time,80)*.004);
+    this.mimicAt.set(feet.x+Math.sin(angle)*7.2,feet.y+1.45,feet.z+Math.cos(angle)*7.2);
+    this.hud.say(id,this.mimicAt);
+    this.nextMimicAt=time+23.5;
+  }
+
   #cinematic(dt){
+    this.falseCompanion?.hide();
     const story=this.chapter, ambience=this.hud.ambience;
     this.camera.torch.visible=false;
     story.advance(dt);
@@ -236,21 +259,27 @@ export class Game {
       if(this.menuFrame!=null&&(this.softwareRendering||this.reducedMotion||this.elapsed-this.menuFrame<.085))return;
       this.menuFrame=this.elapsed;
     }
-    if(ending&&this.endingDrawn)return;
     const view=menu?this.panorama.update(this.elapsed):this.view;
     const scares=this.hud.scareSetting.checked, reduced=this.reducedMotion||!scares;
     const escaping=mode==='escape', escapeTime=ending?ESCAPE.end:time;
+    // The epilogue plays through three camera stages: the highway tail, the
+    // rear seat, then the same nameless road again at 11:59 PM.
+    const night=ending&&time>=ENDING.credits;
+    const rearShot=ending&&time>=ENDING.reveal&&!night;
     let motion;
     if(mode==='repair')car.repair(view,time,this.reducedMotion);
     else if(mode==='final-repair')car.finalRepair(view,time,this.reducedMotion,story.repairFrom);
     else if(escaping||ending){
-      motion=car.escape(view,escapeTime,reduced);
+      if(night)motion=car.postCredits(view,time,reduced);
+      else if(rearShot)motion=car.rearSeatShot(view,time,reduced);
+      else motion=car.escape(view,escapeTime,reduced);
       if(escaping){
         this.horde??=createGhostHorde(this.scene,this.textures,{seed:this.caseLog.seed,compact:this.compact,leader:this.stalker.actor});
         this.impactDust??=createImpactDust(this.scene,{compact:this.compact});
         this.horde.update(time,view,car.car,motion,reduced);this.impactDust.update(time,reduced);
       }else{
-        this.horde?.hide();this.impactDust?.hide();this.hud.clearVoice();
+        this.horde?.hide();this.impactDust?.hide();
+        if(!rearShot)this.hud.clearVoice();
       }
     }
     else if(!menu)car.pose(view,time,mode,this.reducedMotion,daylight);
@@ -258,7 +287,7 @@ export class Game {
       this.finaleHazards??=createFinaleHazards(this.scene,this.textures);
       this.finaleHazards.update(time,car.car,{scares,reduced});
     }else this.finaleHazards?.hide();
-    if((escaping||ending)&&escapeTime>=ESCAPE.breakaway){
+    if((escaping||ending)&&!night&&escapeTime>=ESCAPE.breakaway){
       this.highway??=createHighwayScene(this.scene,this.textures,{compact:this.compact});
       this.highway.update(escapeTime,view,this.reducedMotion);
     }else this.highway?.hide();
@@ -269,15 +298,14 @@ export class Game {
       else if(mode==='final-repair'&&time>=FIX.ignition+.62)ambience.updateRide(0,escapeMotor(0));
     }
     const blackout=escaping&&time<ESCAPE.headlamps?.72:0;
-    const morning=(escaping||ending)&&escapeTime>=ESCAPE.dawn;
+    const morning=!night&&(escaping||ending)&&escapeTime>=ESCAPE.dawn;
     const fog=escaping&&time<ESCAPE.headlamps?.0136:
       morning?MathUtils.lerp(.015,.0064,MathUtils.smoothstep(escapeTime,ESCAPE.dawn,ESCAPE.merge+.8)):undefined;
     const propsMoved=mode==='repair'||mode==='final-repair'||escaping;
-    this.world.update(this.elapsed,view,this.player,false,propsMoved,{daylight,blackout,fog,quiet:true,cinematic:true});
+    this.world.update(this.elapsed,view,this.player,false,propsMoved,{daylight:night?0:daylight,blackout,fog,quiet:true,cinematic:true});
     ambience.update(this.elapsed,view,this.player,null);
     this.hud.renderStory(mode,story.copy,this.caseLog,time,story.clock,motion?.shot);
     this.renderer.render(this.scene,view);
-    this.endingDrawn=ending;
   }
 
   #used(action,phase){
@@ -293,11 +321,11 @@ export class Game {
       this.player.velocity.set(0,0,0);this.accumulator=0;
       this.view.fov=CAMERA.fov;this.view.updateProjectionMatrix();
       this.highlight.update(this.elapsed,null);
-      this.stalker.clear();this.haunts.cancel();
+      this.stalker.clear();this.haunts.cancel();this.falseCompanion?.hide();this.nextMimicAt=this.elapsed+18;
       this.hud.clearVoice();this.hud.renderScare(0);this.hud.renderInteraction(null);
       this.hud.ambience.updateMotors(this.view,[]);
     }
-    if(action.id==='well-tags')this.hud.showEvidence({item:'पीतल पर खुदा संदेश',text:'“लौटकर हवेली का रेडियो सुनना। कभी-कभी उसमें स्कूल की आवाज़ अब भी आती है।”'});
+    if(action.id==='well-tags')this.hud.showEvidence({item:'पीतल पर खुदा संदेश',text:'“जवाब मत देना। तुम्हारे नाम पर बुला रहा है — और तुम्हारे साथ वाला पहले से जवाब दे चुका है।”'});
   }
 
   #photo(){
@@ -356,7 +384,10 @@ export class Game {
       this.stalker.update(dt,context);
       if(this.stalker.active){if(this.haunts.encounter)this.haunts.cancel();}
       else this.haunts.update(dt,context);
-    }
+      this.falseCompanion?.update(dt,this.elapsed,this.player.position,this.view,
+        this.hud.scareSetting.checked&&!this.stalker.active&&!room);
+      this.#voiceMimic(this.elapsed,context);
+    }else this.falseCompanion?.hide();
     this.world.update(this.elapsed,this.view,this.player,this.camera.enabled,propsMoved,{weather,paused:!active,blackout:this.stalker.blackout});
     const location=this.world.locationAt(this.player.position,room);
     this.hud.renderLocation(!room&&this.player.position.z>-8&&Math.abs(this.player.position.x)<16?`${VILLAGE_NAME} की चौखट`:location);
@@ -367,8 +398,13 @@ export class Game {
     this.hud.renderWaypoint(this.view,active?objective:null,this.world.collision,this.interactions.windowOcclusion);
     this.highlight.update(this.elapsed,this.hud.tracker.hidden?null:objective,this.view);
     this.hud.renderWorld(this.chapter.clock,exploring?(this.stalker.hint||this.haunts.hint):'');
+    if(this.hud.chat?.client && this.elapsed-(this.lastChatLocation??0)>2){
+      this.lastChatLocation=this.elapsed;
+      this.hud.chat.client.setLocation(location);
+    }
     const ambience=this.hud.ambience;
-    ambience.update(this.elapsed,this.view,this.player,room,{rain:weather.rain,paused:!active});
+    const tension=exploring?Math.max(this.scare.level,this.haunts.level,this.stalker.level,this.stalker.blackout*.7):0;
+    ambience.update(this.elapsed,this.view,this.player,room,{rain:weather.rain,paused:!active,tension});
     ambience.updateMotors(this.view,this.world.vehicles);
     this.hud.renderScare(exploring?Math.max(this.scare.level,this.haunts.level,this.stalker.level):0,
       exploring&&(this.stalker.phase==='seen'||this.haunts.phase==='showing'&&this.haunts.encounter?.type==='jump'),exploring&&this.stalker.phase==='seen');

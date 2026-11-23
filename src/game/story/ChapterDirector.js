@@ -2,7 +2,7 @@ import { Vector3 } from 'three';
 import { CAR_EXIT, PARKED, REPAIR_STANCE } from './StoryCar.js';
 import { CAR_ARRIVAL, CAR_BEATS, CAR_CAPTIONS, INTRO } from './IntroSequence.js';
 import { repairCopy, repairDaylight, REPAIR, REPAIR_CUES } from './RepairSequence.js';
-import { ESCAPE, ESCAPE_CUES, ESCAPE_END, escapeCopy, escapeDaylight, FIX, FIX_CUES, fixCopy } from './CretaFinale.js';
+import { ENDING, ENDING_CUES, ESCAPE, ESCAPE_CUES, ESCAPE_END, endingCopy, escapeCopy, escapeDaylight, FIX, FIX_CUES, fixCopy } from './CretaFinale.js';
 import { CRETA_RETURN, ESCAPE_CHEAT_NUMBER } from './VillageChapter.js';
 import { CAMERA, PLAYER, WORLD } from '../settings.js';
 
@@ -33,7 +33,7 @@ export class ChapterDirector {
   }
   get clock() {
     if (this.mode === 'repair') return this.copy.clock;
-    if (this.mode === 'ending') return '05:12';
+    if (this.mode === 'ending') return this.modeTime >= ENDING.credits ? '23:59' : '05:12';
     if (this.mode === 'escape') return this.modeTime>=ESCAPE.merge?'05:12':this.modeTime>=ESCAPE.dawn?'05:11':'19:53';
     if (this.mode === 'final-repair') return '19:52';
     if (this.mode === 'play') return this.log.finished ? '19:42' : '19:10';
@@ -65,6 +65,17 @@ export class ChapterDirector {
   }
 
   advance(dt) {
+    // The ending is a staged epilogue, not another cut scene: it keeps running
+    // from the highway into the dhaba, the rear seat and the post-credits road.
+    if (this.mode === 'ending') {
+      const before = this.modeTime;
+      this.modeTime = Math.min(before + dt, ENDING.end);
+      for (const [at, cue] of ENDING_CUES) {
+        if (before < at && at <= this.modeTime) this.sound(cue);
+      }
+      this.copy = endingCopy(this.modeTime);
+      return;
+    }
     const scene = scenes[this.mode];
     if (!scene) return;
     const before = this.modeTime;
@@ -163,9 +174,11 @@ export class ChapterDirector {
         message: 'चीट चालू · 05 / 05 मिशन पूरे। रिंच मिल गया। फ़ोन बंद करो, फिर नक्शे से CRETA तक लौटो।',
       };
     }
-    if (type === 'photo') return { capture: true, message: 'नई तस्वीर गैलरी में है।' };
-    if (contact !== 'meera') return { message: contact === 'dada' ? 'कॉल नहीं लगी। दादा का पुराना संदेश अब भी फ़ोन में है।' : 'गैराज का नंबर अभी बंद है।' };
-    if (this.log.hasWrench) return { cue: 'signal-clear', message: 'मीरा: “संदेश मिल गया, कृष। रिंच से CRETA ठीक करो और जंगल की सड़क से बाहर निकलो।”' };
+    if (type === 'photo') return { capture: true, message: 'नई तस्वीर गैलरी में है। पीछे कोई और आ गया है क्या?' };
+    if (contact === 'ravi') return { cue: 'radio-static', voice: 'stalker-first', message: 'रवि की आवाज़ फ़ोन के उस छोर से: “कृष, रेडियो चालू रखना। मैं तुम्हारी आवाज़ सुन रहा हूँ… पर तुम्हारी साँसों के साथ और कोई साँस भी।”' };
+    if (contact === 'tara') return { cue: 'ghost-whisper', message: 'बूढ़ी आवाज़: “दो मेहमान आए थे। एक पहले भी यहाँ आ चुका था। तीसरा अभी आएगा।”' };
+    if (contact !== 'meera') return { message: contact === 'dada' ? 'कॉल नहीं लगी। दादा की चिट्ठी अब भी फ़ोन में है — पीछे वाली लाइन दोबारा पढ़ो।' : 'गैराज का नंबर बंद है। रवि फिर भी साथ है, है न?' };
+    if (this.log.hasWrench) return { cue: 'signal-clear', message: 'मीरा: “संदेश मिल गया, कृष। रिंच से CRETA ठीक करो और जंगल की सड़क से बाहर निकलो। रवि को अंदर ही रखना।”' };
     return { message: 'यहाँ फ़ोन का सिग्नल नहीं है। मदद के लिए हवेली का रेडियो इस्तेमाल करो।' };
   }
 }

@@ -129,6 +129,9 @@ kbd { display: inline-grid; place-items: center; height: 21px; min-width: 21px; 
 .evidence-kicker { color: #d9bb87; font-size: 11px; }
 .evidence-note h2 { margin: 4px 0 5px; font: 600 25px/1.2 'Noto Serif Devanagari', serif; color: #f4e6ca; }
 .evidence-note p { margin: 0; font-size: 13px; line-height: 1.58; color: #eee6d5; }
+/* Memory glitch: the record rewrites itself while you read it. */
+.evidence-note p.evidence-glitch { color: #e7c9c9; animation: evidence-glitch 1.7s steps(1, end) 3; }
+@keyframes evidence-glitch { 0%, 83%, 100% { opacity: 1; transform: none; } 86% { opacity: .34; transform: translateX(-2px); } 89% { opacity: .9; transform: translateX(2px); } 92% { opacity: .52; transform: translateX(-1px); } }
 .scare-shade { position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(ellipse at 50% 48%, transparent 32%, #17100970 68%, #080705f5 100%); opacity: 0; }
 /* Above the canvas, below the controls, without intercepting input. */
 #game-view { position: relative; z-index: -2; }

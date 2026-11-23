@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist');
-const DATA_DIR = join(ROOT, 'server', 'data');
+const DATA_DIR = process.env.CHAT_DATA_DIR ? resolve(process.env.CHAT_DATA_DIR) : join(ROOT, 'server', 'data');
 const LOG_FILE = join(DATA_DIR, 'chat-history.json');
 const PORT = Number(process.env.PORT) || 8787;
 const MAX_MESSAGES = 500;
@@ -76,6 +76,11 @@ function saveHistory() {
   }, 350);
 }
 
+const decodeHeader = value => {
+  const text = clean(value, 200);
+  try { return decodeURIComponent(text); } catch { return text; }
+};
+
 function touchPlayer(req) {
   const id = clean(req.headers['x-village-id'], 64);
   if (!id) return;
@@ -86,9 +91,9 @@ function touchPlayer(req) {
   const previous = players.get(id);
   players.set(id, {
     id,
-    name: clean(req.headers['x-village-name'], 32) || previous?.name || 'अजनबी',
-    room: clean(req.headers['x-village-room'], 40) || previous?.room || 'satrod-kalan',
-    location: clean(req.headers['x-village-location'], 60) || previous?.location || '',
+    name: decodeHeader(req.headers['x-village-name']) || previous?.name || 'अजनबी',
+    room: decodeHeader(req.headers['x-village-room']) || previous?.room || 'satrod-kalan',
+    location: decodeHeader(req.headers['x-village-location']) || previous?.location || '',
     seen: Date.now(),
   });
 }

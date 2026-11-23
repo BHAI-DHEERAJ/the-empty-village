@@ -25,6 +25,13 @@ const sounds = {
   'omen-skitter':[.73,.27,389,111,'ratchet'],'omen-double':[.94,.26,272,64,'omen'],
   'omen-watcher':[.91,.29,105,66,'omen'],'omen-road':[.89,.44,265,107,'paper'],'haunt-impact':[.62,.37,168,58,'surprise'],
   'thunder-roll':[3.9,.59,56,25,'storm'], 'phone-call':[.37,.22,439,523,'double-click'],
+  // New local nightmare foley: no downloads, every buffer synthesized once.
+  'omen-mirror':[1.12,.28,212,68,'whisper'], 'omen-child':[.86,.29,620,320,'giggle'],
+  'omen-statue':[1.24,.30,98,42,'scrape'], 'omen-echo':[1.02,.27,308,74,'echo'],
+  'ghost-whisper':[1.68,.23,184,91,'whisper'], 'child-giggle':[1.14,.25,760,410,'giggle'],
+  'bone-crack':[.46,.27,260,84,'crack'], 'chain-drag':[1.58,.24,120,54,'scrape'],
+  'scare-heartbeat':[1.36,.33,54,42,'heartbeat'], 'scare-reverse':[1.08,.37,880,60,'reverse'],
+  'stalker-scrape':[1.32,.31,143,51,'scrape'], 'radio-static':[.84,.21,512,138,'radio'],
 };
 
 function position(panner, point) {
@@ -63,6 +70,26 @@ function sample(context, descriptor) {
     else if(style==='ratchet')out[i]=(.47*s+.47*rumble+.23*n)*(pop(.03,37)+.8*pop(.15,42)+.9*pop(.28,48)+.67*pop(.48,42));
     else if(style==='storm')out[i]=(.26*s+.65*rumble+.14*Math.sin(phase*21.98)+.045*n)*Math.min(1,t*3)*(1-x)**1.43*(.67+.33*Math.sin(t*8.5+.41)**2)+(.18*rumble+.11*n)*pop(.34,8);
     else if(style==='water')out[i]=(.58*rumble+.15*n+.09*s)*bump*(.61+.39*Math.sin(t*36+x*4)**2);
+    else if(style==='whisper'){
+      // Breathy formants: two noise bands with a slow, spoken rhythm.
+      const formant=Math.sin(t*19)+.55*Math.sin(t*31+.8);
+      out[i]=(.52*(n-rumble)+.40*rumble+.08*s*formant)*Math.sin(Math.PI*x)**1.3*(.45+.55*Math.max(0,formant)**2);
+    }
+    else if(style==='giggle'){
+      const pulse=Math.max(0,Math.sin(t*13.4))**2;
+      out[i]=(.30*s+.33*rumble+.22*n)*pulse*Math.sin(Math.PI*x)**.8*(.68+.32*Math.cos(t*41)**2);
+    }
+    else if(style==='scrape'){
+      // Nails on plaster: irregular low grind with a high edge.
+      out[i]=(.56*rumble+.28*n+.11*s)*Math.min(1,t*9)*(1-x)**.6*(.35+.65*Math.max(0,Math.sin(t*11.7+x*8))**2);
+    }
+    else if(style==='heartbeat'){
+      const thump=(at,decay)=>{const age=t-at;return age<0?0:Math.min(1,age*280)*Math.exp(-age*decay);};
+      out[i]=(.62*s+.34*rumble)*(thump(.03,17)+.63*thump(.37,19)+.24*thump(1.04,13));
+    }
+    else if(style==='reverse')out[i]=(.31*s+.64*rumble+.08*n)*Math.min(1,t*2.4)*(x**2.1)*(.75+.25*Math.cos(t*24)**2);
+    else if(style==='echo')out[i]=(.42*s+.38*rumble+.16*n)*(pop(.01,72)+.62*pop(duration*.27,35)+.31*pop(duration*.52,29));
+    else if(style==='crack')out[i]=(.42*s+.36*rumble+.20*n)*(pop(.012,48)+.74*pop(.075,60)+.38*pop(.23,38));
     else out[i]=(s*.30+rumble*.55)*bump*(style==='impact'?1-x:.55+.45*Math.sin(t*28)**2);
   }
   return buffer;

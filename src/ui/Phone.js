@@ -8,6 +8,7 @@ const contacts=[
   {id:'meera',name:'मीरा',detail:'बिजली चौकी · संपर्क 01',portrait:new URL('../assets/phone/phone-meera-albedo.webp',import.meta.url).href},
   {id:'dada',name:'दादा',detail:'परिवार · संपर्क 02',portrait:archive[1].src},
   {id:'ravi',name:'रवि',detail:'गैराज · संपर्क 03',portrait:new URL('../assets/phone/phone-ravi-albedo.webp',import.meta.url).href},
+  {id:'tara',name:'तारा',detail:'स्कूल · संपर्क 04',portrait:null},
 ];
 const imageLimit=4, dialLimit=12;
 const dialDigits=number=>number.replace(/[^0-9]/g,'').slice(0,dialLimit);
@@ -94,7 +95,9 @@ export class Phone {
         this.body.querySelector('.phone-contact[aria-pressed="true"]').focus({preventScroll:true});
       });
       item.setAttribute('aria-pressed',String(this.contact===contact.id));
-      const text=make('span'),avatar=photoTag(contact.portrait,'');avatar.className='phone-avatar';
+      const text=make('span');
+      const avatar=contact.portrait?photoTag(contact.portrait,''):make('i','phone-avatar phone-avatar-initial',contact.name.slice(0,1));
+      avatar.className=contact.portrait?'phone-avatar':'phone-avatar phone-avatar-initial';
       text.append(make('b','',contact.name),make('small','',contact.detail));item.append(avatar,text);list.append(item);
     }
     const dock=make('div','phone-contact-actions');
@@ -102,8 +105,10 @@ export class Phone {
     if(this.contact==='meera')dock.append(button('मदद का संदेश','phone-secondary',()=>this.perform('send')));
     const note=make('div','phone-thread');
     if(this.contact==='meera'&&this.log?.hasWrench){
-      note.append(make('small','','हवेली के रेडियो का जवाब · 19:42'),make('p','','“संदेश मिल गया, कृष। रिंच से CRETA ठीक करो और जंगल की सड़क से बाहर निकलो।”'));
-    }else if(this.contact==='dada')note.append(make('small','','पुराना संदेश'),make('p','','“बत्तियाँ बुझी हों तो स्कूल से मदद माँगना।”'));
+      note.append(make('small','','हवेली के रेडियो का जवाब · 19:42'),make('p','','“संदेश मिल गया, कृष। रिंच से CRETA ठीक करो — पर रवि को गाँव से बाहर मत ले जाना।”'));
+    }else if(this.contact==='dada')note.append(make('small','','पुरानी चिट्ठी · पीछे वाला पन्ना'),make('p','','“अगर कोई तुम्हें तुम्हारे नाम से बुलाए, जवाब मत देना। रवि को गाँव से बाहर मत ले जाना।”'));
+    else if(this.contact==='ravi')note.append(make('small','','आख़िरी संदेश · 23 नवंबर 2011'),make('p','','“कृष, मैं यहाँ हूँ। अगर मेरी आवाज़ आए पर मैं दिखूँ नहीं… तो समझ लेना कि मैं अंदर हूँ। पिछली सीट देखना।”'));
+    else if(this.contact==='tara')note.append(make('small','','गाँव का रेडियो · खुला हुआ संदेश'),make('p','','“दो मेहमान आए थे। एक पहले भी यहाँ आ चुका था। तीसरा मेहमान अभी आएगा।”'));
     else note.append(make('small','','कोई नया संदेश नहीं'));
     this.body.replaceChildren(list,note,dock);
   }

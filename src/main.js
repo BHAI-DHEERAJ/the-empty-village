@@ -11,17 +11,22 @@ import './ui/navigation.css';
 import './ui/touch.css';
 import './ui/menu.css';
 import './ui/landscape.css';
+import './ui/chat.css';
 import './ui/orientation.js';
 import { Game } from './game/Game.js';
 import { WindAmbience } from './game/audio/WindAmbience.js';
 import { Hud } from './ui/Hud.js';
+import { ChatClient } from './network/ChatClient.js';
+import { ChatPanel } from './ui/ChatPanel.js';
 
 const shell = document.getElementById('game-shell');
 const canvas = document.getElementById('game-view');
 const startup = window.villageStartup;
-let game, hud, ambience;
+let game, hud, ambience, chatClient, chatPanel;
 
 function dispose() {
+  chatClient?.dispose();
+  chatPanel?.dispose();
   game?.dispose();
   hud?.dispose();
   ambience?.dispose();
@@ -33,6 +38,11 @@ async function startVillage() {
   try {
     ambience = new WindAmbience();
     hud = new Hud(shell, ambience);
+    chatClient = new ChatClient({ character: hud.character });
+    chatPanel = new ChatPanel(shell, { client: chatClient });
+    hud.attachChat(chatPanel);
+    hud.onCharacter = character => chatClient.setName(character.name);
+    chatClient.start();
     startup?.stage('3D इंजन शुरू हो रहा है…');
     checkingGraphics = true;
     game = new Game(canvas, hud);

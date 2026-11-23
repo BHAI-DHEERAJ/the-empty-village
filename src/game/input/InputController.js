@@ -5,7 +5,7 @@ export function defaultTouchControls(){
 }
 
 export class InputController {
-  constructor(canvas, { stick, thumb, jumpButton, useButton, runButton, touch, onMode, onFlashlight, onJournal, onPhone, onMap, optionsOpen, keepCursor = () => false }) {
+  constructor(canvas, { stick, thumb, jumpButton, useButton, runButton, touch, onMode, onFlashlight, onJournal, onPhone, onMap, onChat, optionsOpen, keepCursor = () => false }) {
     this.canvas = canvas;
     this.stick = stick;
     this.thumb = thumb;
@@ -16,6 +16,7 @@ export class InputController {
     this.onJournal = onJournal;
     this.onPhone = onPhone;
     this.onMap = onMap;
+    this.onChat = onChat;
     this.optionsOpen = optionsOpen;
     this.keepCursor = keepCursor;
     this.keys = new Set();
@@ -44,6 +45,7 @@ export class InputController {
       if (code === 'KeyM') { if (!event.repeat) { event.preventDefault(); this.onMap?.(); } return; }
       if (code === 'KeyP') { if(!event.repeat){event.preventDefault();this.onPhone?.();} return; }
       if (code === 'KeyJ') { if (!event.repeat) { event.preventDefault(); this.onJournal?.(); } return; }
+      if (code === 'KeyC') { if (!event.repeat) { event.preventDefault(); this.onChat?.(); } return; }
       if (this.optionsOpen?.()) return;
       if (code === 'KeyF' && !event.repeat) { event.preventDefault(); this.onFlashlight?.(); return; }
       if (code === 'KeyE') { if (!event.repeat) { event.preventDefault(); this.useQueued = true; } return; }

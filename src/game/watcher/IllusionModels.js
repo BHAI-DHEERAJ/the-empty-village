@@ -155,13 +155,37 @@ export function createIllusionModels(scene,textures,{compact=false}={}){
     twins.veil=n=>rigs.forEach(({copy})=>copy.veil(n));
   }
 
+  // A newer apparition: the blank-faced listener. It has no eyes at all until
+  // the exact moment it decides you are worth looking at.
+  const faceless=assembly('बिना चेहरे वाली सुनने वाली');
+  {
+    const {group,paint,mesh,oval,bone}=faceless;
+    const shroud=paint('hauntCloth',{color:0x9d9990,emissive:0x4d5a61,emissiveIntensity:.16,side:DoubleSide,strength:.79});
+    const skin=paint('hauntMask',{color:0xd5cfc1,emissive:0x4c4641,emissiveIntensity:.12,strength:.9});
+    mesh(drape([[.06,.35,.19],[.42,.31,.16],[.83,.27,.15],[1.23,.33,.19],[1.61,.24,.16],[1.79,.11,.10]],compact?22:35,3.7),shroud).name='Faceless mourning sheet';
+    const head=new Group();head.position.set(0,1.91,.015);group.add(head);
+    const blank=oval(skin,0,0,0,.163,.229,.126,head);blank.name='Blank porcelain mask · no eyes';
+    for(const side of [-1,1]){
+      const sleeve=new Group();sleeve.position.set(side*.247,1.52,0);group.add(sleeve);
+      sleeve.rotation.z=side*.14;
+      mesh(drape([[-.69,.09,.08],[-.30,.11,.10],[.06,.12,.10]],compact?12:18,side+4),shroud,sleeve);
+      bone(skin,[0,-.49,.01],[side*.031,-.79,.06],.041,sleeve);
+    }
+    faceless.pose=(t,still)=>{
+      head.rotation.z=still?0:Math.sin(t*1.7)*.085;
+      group.rotation.z=still?0:Math.sin(t*2.3)*.035;
+    };
+    faceless.reset=()=>{head.rotation.set(0,0,0);group.rotation.set(0,0,0);};
+    faceless.reset();
+  }
+
   const watcher=createWatcherModel(textures,{compact});watcher.group.name='दूर का साया';scene.add(watcher.group);
   const sentinel={group:watcher.group,veil:level=>watcher.veil(level),reset:pose=>watcher.hold(1,pose??'standing'),
     pose:(t,still,travel)=>{
       if(travel!=null)watcher.walk(travel,.90);
       watcher.tilt((travel!=null?.10:still?.16:.39)*Math.min(1,t));watcher.eyes(.52);
     }};
-  return {jump,wraith,crawler,twins,sentinel};
+  return {jump,wraith,crawler,twins,sentinel,faceless};
 }
 
 export function createShadowOmen(scene){
@@ -181,8 +205,18 @@ export function createShadowOmen(scene){
   const group=new Group(),rind=new Mesh(geometry,outer),core=new Mesh(geometry,inner);
   rind.scale.set(1.09,1,1.012);core.position.y=.003;group.add(rind,core);group.renderOrder=9;group.name='सामने खिंचा हुआ भारी साया';
   scene.add(group);group.visible=false;
+  const toEye=new Vector3(),facing=new Vector3();
   return {group,
     show(feet,forward){group.position.copy(feet);group.position.y+=.028;group.rotation.y=Math.atan2(forward.x,forward.z);group.visible=true;},
+    // Dynamic Shadow: it only holds together in peripheral vision. The moment
+    // the player looks straight at it, the silhouette drains away.
+    gaze(view){
+      if(!group.visible)return 0;
+      toEye.set(group.position.x-view.position.x,group.position.y+1.1-view.position.y,group.position.z-view.position.z);
+      const distance=toEye.length();if(distance<.35)return 0;
+      toEye.divideScalar(distance);view.getWorldDirection(facing);
+      return 1-MathUtils.smoothstep(toEye.dot(facing),.958,.992);
+    },
     alpha(n){outer.opacity=.31*n;inner.opacity=.69*n;},
     hide(){group.visible=false;},
   };
