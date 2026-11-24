@@ -3,7 +3,7 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - arena/d463b5f6-the-empty-village
+      - main
   workflow_dispatch:
 
 permissions:
